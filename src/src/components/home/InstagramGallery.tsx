@@ -1,1 +1,0 @@
-export { InstagramGallery } from './index'

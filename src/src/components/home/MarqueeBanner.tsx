@@ -1,1 +1,0 @@
-export { MarqueeBanner } from './index'
