@@ -185,7 +185,7 @@ export function AdminProductsClient({ products: initial, categories }: Props) {
                       )}
                       <div>
                         <p className="font-medium text-brand-dark text-sm">{p.name}</p>
-                        <p className="text-xs text-brand-muted">{p.sku || p.slug}</p>
+                        <p className="text-xs text-brand-muted">{p.slug}</p>
                       </div>
                     </div>
                   </td>
