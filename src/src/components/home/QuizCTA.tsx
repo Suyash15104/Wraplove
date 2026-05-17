@@ -1,0 +1,1 @@
+export { QuizCTA } from './index'

@@ -1,0 +1,363 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  RAZORPAY
+  STRIPE
+  COD
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum CouponType {
+  PERCENTAGE
+  FIXED
+}
+
+// ─── USER ─────────────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  phone         String?
+  role          Role      @default(USER)
+  loyaltyPoints Int       @default(0)
+  referralCode  String?   @unique
+
+  addresses  Address[]
+  orders     Order[]
+  reviews    Review[]
+  wishlists  Wishlist[]
+  cart       CartItem[]
+  sessions   Session[]
+  accounts   Account[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Address {
+  id         String  @id @default(cuid())
+  userId     String
+  name       String
+  phone      String
+  line1      String
+  line2      String?
+  city       String
+  state      String
+  pincode    String
+  isDefault  Boolean @default(false)
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  createdAt DateTime @default(now())
+}
+
+// ─── PRODUCT ──────────────────────────────────────────────────────────────────
+
+model Category {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  slug        String  @unique
+  description String?
+  image       String?
+  emoji       String?
+  sortOrder   Int     @default(0)
+
+  products Product[]
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String   @db.Text
+  emoji       String
+  images      String[]
+  price       Float
+  comparePrice Float?
+  cost        Float?
+  sku         String?  @unique
+  stock       Int      @default(0)
+  minStock    Int      @default(5)
+  isActive    Boolean  @default(true)
+  isFeatured  Boolean  @default(false)
+  isBuilderItem Boolean @default(true)
+  tags        String[]
+  occasions   String[]
+  weight      Float?
+
+  categoryId  String
+  category    Category    @relation(fields: [categoryId], references: [id])
+  variants    Variant[]
+  reviews     Review[]
+  orderItems  OrderItem[]
+  wishlists   Wishlist[]
+  cartItems   CartItem[]
+  combos      ComboProduct[]
+
+  seoTitle       String?
+  seoDescription String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Variant {
+  id        String  @id @default(cuid())
+  productId String
+  name      String
+  value     String
+  price     Float?
+  stock     Int     @default(0)
+  image     String?
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+// ─── COMBO ────────────────────────────────────────────────────────────────────
+
+model Combo {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique
+  description String  @db.Text
+  emoji       String
+  bannerImage String?
+  price       Float
+  comparePrice Float?
+  isActive    Boolean @default(true)
+  isFeatured  Boolean @default(false)
+  occasions   String[]
+  tags        String[]
+  badge       String?
+
+  products    ComboProduct[]
+  orderItems  OrderItem[]
+  wishlists   Wishlist[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ComboProduct {
+  id        String @id @default(cuid())
+  comboId   String
+  productId String
+  quantity  Int    @default(1)
+
+  combo   Combo   @relation(fields: [comboId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+}
+
+// ─── BOX THEME ────────────────────────────────────────────────────────────────
+
+model BoxTheme {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique
+  emoji       String
+  description String?
+  color       String
+  gradient    String?
+  basePrice   Float
+  isActive    Boolean @default(true)
+  sortOrder   Int     @default(0)
+}
+
+// ─── CART ─────────────────────────────────────────────────────────────────────
+
+model CartItem {
+  id        String  @id @default(cuid())
+  userId    String
+  productId String?
+  comboId   String?
+  quantity  Int     @default(1)
+  isBox     Boolean @default(false)
+  boxData   Json?   // custom box builder data
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── ORDER ────────────────────────────────────────────────────────────────────
+
+model Order {
+  id              String        @id @default(cuid())
+  orderNumber     String        @unique
+  userId          String
+  addressId       String?
+  status          OrderStatus   @default(PENDING)
+  paymentMethod   PaymentMethod
+  paymentStatus   PaymentStatus @default(PENDING)
+  paymentId       String?       // Razorpay/Stripe payment ID
+  subtotal        Float
+  discount        Float         @default(0)
+  deliveryCharge  Float         @default(0)
+  total           Float
+  couponCode      String?
+  personalNote    String?       @db.Text
+  recipientName   String?
+  trackingNumber  String?
+  estimatedDelivery DateTime?
+
+  user     User       @relation(fields: [userId], references: [id])
+  address  Address?   @relation(fields: [addressId], references: [id])
+  items    OrderItem[]
+  coupon   Coupon?    @relation(fields: [couponCode], references: [code])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  productId String?
+  comboId   String?
+  quantity  Int
+  price     Float
+  name      String
+  emoji     String
+  isBox     Boolean @default(false)
+  boxData   Json?
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id])
+  combo   Combo?   @relation(fields: [comboId], references: [id])
+}
+
+// ─── COUPON ───────────────────────────────────────────────────────────────────
+
+model Coupon {
+  id          String     @id @default(cuid())
+  code        String     @unique
+  description String?
+  type        CouponType
+  value       Float
+  minOrder    Float?
+  maxDiscount Float?
+  usageLimit  Int?
+  usedCount   Int        @default(0)
+  isActive    Boolean    @default(true)
+  startDate   DateTime?
+  endDate     DateTime?
+
+  orders Order[]
+
+  createdAt DateTime @default(now())
+}
+
+// ─── REVIEW ───────────────────────────────────────────────────────────────────
+
+model Review {
+  id        String  @id @default(cuid())
+  userId    String
+  productId String
+  rating    Int
+  title     String?
+  body      String? @db.Text
+  images    String[]
+  isVerified Boolean @default(false)
+  isVisible  Boolean @default(true)
+
+  user    User    @relation(fields: [userId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+// ─── WISHLIST ─────────────────────────────────────────────────────────────────
+
+model Wishlist {
+  id        String  @id @default(cuid())
+  userId    String
+  productId String?
+  comboId   String?
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id])
+  combo   Combo?   @relation(fields: [comboId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+  @@unique([userId, comboId])
+}
+
+// ─── ANALYTICS ────────────────────────────────────────────────────────────────
+
+model PageView {
+  id        String   @id @default(cuid())
+  page      String
+  userId    String?
+  sessionId String?
+  createdAt DateTime @default(now())
+
+  @@index([page, createdAt])
+}
