@@ -25,10 +25,9 @@ const CONTACT_INFO = [
 ]
 
 const FAQS = [
-  { q: 'How long does delivery take?',         a: 'Most orders ship within 24 hours and arrive within 2–5 business days.' },
-  { q: 'Can I customize the gift message?',    a: 'Yes! Every order can include a personalized message card, printed beautifully.' },
-  { q: 'Do you ship pan-India?',              a: 'Yes, we ship to all major cities and most PIN codes across India.' },
-  { q: 'What if I am not happy with my order?', a: 'We offer easy exchanges within 7 days. Contact us and we will make it right.' },
+{ q: 'Can I customize the gift message?',     a: 'Yes! Every order can include a personalized message card, printed beautifully.' },
+{ q: 'Do you ship pan-India?',               a: 'Yes, we ship to all major cities and most PIN codes across India.' },
+{ q: "What if I'm not happy with my order?", a: "We offer easy exchanges within 7 days. Contact us and we'll make it right." },
 ]
 
 export default function ContactPage() {
